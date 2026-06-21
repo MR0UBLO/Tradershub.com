@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  username          String   @unique
+  passwordHash      String
+  firstName         String?
+  lastName          String?
+  phone             String?   @unique
+  profileImage      String?
+  isEmailVerified   Boolean  @default(false)
+  isPhoneVerified   Boolean  @default(false)
+  isActive          Boolean  @default(true)
+  role              String   @default("user")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lastLogin         DateTime?
+
+  wallet            Wallet?
+  trades            Trade[]
+  deposits          Deposit[]
+  withdrawals       Withdrawal[]
+  aiSignals         AISignal[]
+  notifications     Notification[]
+  activities        Activity[]
+}
+
+model Wallet {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance           Float    @default(0)
+  lockedBalance     Float    @default(0)
+  totalDeposited    Float    @default(0)
+  totalWithdrawn    Float    @default(0)
+  totalProfits      Float    @default(0)
+  totalLosses       Float    @default(0)
+  currency          String   @default("KES")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  transactions      WalletTransaction[]
+}
+
+model WalletTransaction {
+  id                String   @id @default(cuid())
+  walletId          String
+  wallet            Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  type              String
+  amount            Float
+  balance           Float
+  description       String?
+  tradeId           String?
+  trade             Trade?   @relation(fields: [tradeId], references: [id], onDelete: SetNull)
+  createdAt         DateTime @default(now())
+}
+
+model Trade {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symbol            String
+  entryPrice        Float
+  exitPrice         Float?
+  quantity          Float
+  tradeType         String
+  status            String   @default("OPEN")
+  profit            Float    @default(0)
+  profitPercentage  Float    @default(0)
+  leverage          Int      @default(1)
+  stopLoss          Float?
+  takeProfit        Float?
+  commission        Float    @default(0)
+  entryAt           DateTime @default(now())
+  exitAt            DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  candle            Candle?  @relation(fields: [candleId], references: [id], onDelete: SetNull)
+  candleId          String?
+  transactions      WalletTransaction[]
+}
+
+model Deposit {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount            Float
+  currency          String   @default("KES")
+  method            String
+  status            String   @default("PENDING")
+  transactionId     String?  @unique
+  mpesaCode         String?  @unique
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Withdrawal {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount            Float
+  currency          String   @default("KES")
+  method            String
+  status            String   @default("PENDING")
+  phoneNumber       String?
+  bankDetails       Json?
+  transactionId     String?  @unique
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Market {
+  id                String   @id @default(cuid())
+  symbol            String   @unique
+  name              String
+  currentPrice      Float
+  change24h         Float    @default(0)
+  changePercent24h  Float    @default(0)
+  high24h           Float?
+  low24h            Float?
+  volume24h         Float    @default(0)
+  marketCap         Float?
+  lastUpdated       DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  candles           Candle[]
+}
+
+model Candle {
+  id                String   @id @default(cuid())
+  marketId          String
+  market            Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  symbol            String
+  open              Float
+  high              Float
+  low               Float
+  close             Float
+  volume            Float    @default(0)
+  timeframe         String
+  timestamp         DateTime @default(now())
+  createdAt         DateTime @default(now())
+
+  trades            Trade[]
+}
+
+model AISignal {
+  id                String   @id @default(cuid())
+  userId            String?
+  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  symbol            String
+  signal            String
+  strength          Float
+  indicators        Json
+  reasoning         String?
+  confidence        Float
+  targetPrice       Float?
+  stopLoss          Float?
+  createdAt         DateTime @default(now())
+}
+
+model Notification {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String
+  title             String
+  message           String
+  isRead            Boolean  @default(false)
+  metadata          Json?
+  createdAt         DateTime @default(now())
+}
+
+model Activity {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action            String
+  details           String?
+  ipAddress         String?
+  userAgent         String?
+  metadata          Json?
+  createdAt         DateTime @default(now())
+}
